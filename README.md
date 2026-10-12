@@ -1,110 +1,70 @@
-# Impact-of-Fuel-Prices-and-Metro-Fares-on-Public-Transport-Usage-in-Istanbul
+# Impact of Fuel Prices and Metro Fares on Metro Ridership in Istanbul (2013–2024)
 
-## Project Overview
-This project explores the relationship between fuel prices, metro fares, vehicle sales, and public transport usage in Istanbul over the years. By analyzing these factors, I aim to determine their impact on metro ridership trends, providing insights that policymakers can use to encourage public transportation usage.
+## Research question
+Do fuel prices, metro fares and car sales explain annual metro ridership in Istanbul?
+Hypotheses (one-sided, alpha = 0.05):
+- H1: higher fuel prices -> higher ridership
+- H2: higher fares -> lower ridership
+- H3: higher car sales -> lower ridership
+For H2 and H3 a *positive* correlation is evidence against the alternative, so the correct
+conclusion is "fail to reject H0" (one-sided p close to 1), not a significant effect.
 
----
+## Data and preparation
+- Ridership: Metro Istanbul / IBB annual passengers. Fuel: Aytemiz/TPPD unleaded petrol price changes.
+  Fares: IBB Istanbulkart full fare. Car sales: ODMD (Turkey-wide, not Istanbul-only).
+- Yearly prices are **time-weighted** (each price counts for the number of days it was in force),
+  not the plain mean of the rows in the file. The 2013 fare only covers 28 Jun–31 Dec.
+- Prices are deflated with Turkish CPI (World Bank WDI FP.CPI.TOTL.ZG, chained, 2013 = 100)
+  to get real prices.
 
-## Motivation
+## Key methodological change: nominal vs. real prices
+Nominal fuel and fare prices rose ~9x and ~10x between 2013 and 2024 because of inflation, and
+ridership also trended upward, so any two trending series correlate. This is a spurious-correlation risk.
 
-As someone who lives in Istanbul and uses the metro regularly, I’ve always been curious about how different factors, like fuel prices and metro fares, affect public transportation usage. While I was in the Netherlands, I learned that when fuel prices rise, the government sometimes lowers public transport fares to encourage more people to use it. This made me wonder if similar trends exist in Istanbul. This study gives me a chance to analyze a real-world issue while improving my data analysis skills through visualization, statistical analysis, and modeling.
+| Test (n = 12 unless noted) | Fuel | Fare | Car sales |
+|---|---|---|---|
+| Nominal levels, Pearson r | 0.79 (p = 0.002) | 0.79 (p = 0.002) | -0.03 (p = 0.92) |
+| **Real levels**, Pearson r | 0.22 (p = 0.50) | -0.16 (p = 0.62) | – |
+| Year-over-year log change (n = 11), r | 0.65 (one-sided p = 0.015) | -0.36 (p = 0.14) | -0.52 (p = 0.050) |
 
----
-## Hypothesis
-- Null Hypothesis 1 (H₀₁): Fuel prices do not have a significant impact on metro ridership in Istanbul.
-- Alternative Hypothesis 1 (H₁₁): Increases in fuel prices lead to higher metro ridership in Istanbul.
-- Null Hypothesis 2 (H₀₂): Metro fare changes do not significantly affect metro ridership in Istanbul.
-- Alternative Hypothesis 2 (H₁₂): Metro fare increases lead to lower metro ridership in Istanbul.
-- Null Hypothesis 3 (H₀₃): Vehicle sales do not have a significant impact on metro ridership.
-- Alternative Hypothesis 3 (H₁₃): Increases in vehicle sales lead to a decline in metro ridership as more people opt for private transportation.
+Regression ln(ridership) ~ ln(real fuel) + ln(real fare) + trend + COVID dummy (2020–21), R² = 0.97, 7 residual df:
+fuel -0.43 (p = 0.066), fare -0.16 (p = 0.50), trend +6.1%/yr (p < 0.001), COVID -0.68 (p < 0.001).
 
----
+## Results
+- The strong positive nominal correlations of the first version are **mostly explained by shared
+  inflation and the long-run upward trend**; they disappear with real prices.
+- The only signal that survives is the year-over-year fuel-price change (r = 0.65), but it is not
+  robust: it is not significant with Spearman correlation (p = 0.10), and in the multivariate model
+  with trend and COVID the real fuel coefficient is negative and not significant.
+- No evidence that fares reduce ridership (H2) and weak, borderline evidence for car sales (H3).
+- With 11–12 annual observations none of these are causal estimates.
 
-## Data Sources
-To conduct this analysis, the project will utilize:
-- Metro Ridership Data: Yearly metro passenger counts and trip frequencies from official transport source IBB Metro Istanbul: "Yolcu Istatikleri".
-- Fuel Price Data: Yearly historical fuel prices in Turkey from Aytemiz "Arşiv Akaryakıt ve LPG Pompa Fiyatları" and from TPPD "GEÇMİŞ DÖNEM AKARYAKIT FİYATLARI".
-- Metro Fare Data: Yearly metro ticket prices for full, student, and discounted categories from tuhim.ibb.gov.tr .
-- Vehicle Sales Data: Yearly automobile vehicle sales in Turkey, sourced from official automotive market reports. (Otomotiv Distribütörleri ve Mobilite Derneği | ODMD)
+## Forecast validation
+The original R² of 0.80–0.82 came from a random 80/20 split of only 9 rows (2 test rows), which is not meaningful.
+Honest validation: one-year-ahead expanding window, 2018–2024:
 
----
+| Model | RMSE (M passengers) | MAPE |
+|---|---|---|
+| Naive (last year's value) | 174 | 25.0% |
+| Linear trend only | 194 | 28.3% |
+| XGBoost (real prices) | 198 | 28.3% |
+| Random forest (real prices) | 200 | 29.6% |
+| Linear (real prices + trend) | 337 | 39.8% |
 
-## Planned Analysis
-Once I have the data, I'll analyze how metro ridership changes in response to fuel price fluctuations, fare adjustments, and vehicle sales. Here’s how I plan to approach it:
+No model beats the naive baseline, largely because of the COVID collapse in 2020. Tree models also cannot
+extrapolate beyond the training range, so the 2025 scenario forecasts were removed. (The earlier
+forecast also fed a fare of 5.25 TL, far below the 2024 value of ~18.9 TL, and the "what-if" scenarios were
+identical because the trees ignored the changed inputs.)
 
-- Looking for patterns in metro usage when fuel prices rise or fall.
-- Comparing ridership in years with high and low fuel prices to see if people change their public transport habits.
-- Examining whether an increase in car sales leads to a drop in metro usage.
-- Using regression analysis to understand if fuel prices, metro fares, and vehicle sales have a predictable impact on metro ridership.
-I’ll finalize the exact methods after reviewing the data to make sure it's complete and suitable for analysis.
----
+## Limitations
+- 12 annual points; few degrees of freedom; COVID outlier years.
+- Fuel is national pricing, ridership is Istanbul-only; car sales are national.
+- Fares and fuel prices are collinear (r = 0.58 in real terms).
+- Ridership series may be affected by network expansion (new lines), which is not controlled for.
+- Population data was left out because the file is not in the repository.
 
-## Expected Outcomes
-- If fuel prices increase, metro ridership is expected to rise as people look for cost-effective alternatives to driving.
-- If metro fares increase, ridership may decrease, especially among full-fare passengers, while students and discounted fare users might be less affected.
-- If car sales rise, metro usage may decline, indicating a shift toward private vehicle ownership.
-- The combined effect of fuel prices, metro fares, and car sales could reveal key trends in transportation choices over time.
-
----
-
-## EDA Process
-I began the EDA process by collecting all relevant datasets. Some of the data were available on a monthly basis, so I aggregated them into annual values by summing monthly figures and calculating their averages to better represent each year.
-In cases where annual data were missing (e.g., Istanbulkart prices for certain years like 2013), I assumed no changes had occurred and used the previous year's data. This situation only applied to a small number of cases.
-After assembling the datasets, I cleaned them by removing unnecessary columns and handling inconsistencies. Once the data was properly prepared, I proceeded to the visualization phase to gain further insights.
-
----
-
-## Visualization Stage
-In the visualization phase, I explored the relationships between metro ridership and various external factors such as fuel prices, public transport fares, and car sales.
-
-1) Fuel Price vs Metro Ridership: A positive correlation was observed between fuel prices and metro usage. As fuel prices increased, metro ridership generally followed an upward trend, suggesting a potential shift from private vehicles to public transport in response to rising fuel costs.
-2) Metro Fare vs Metro Ridership: Interestingly, even though metro fares increased significantly in recent years, ridership also showed an upward trend. This may indicate that fare hikes did not deter passengers, possibly due to limited transportation alternatives or overall inflation effects.
-3) Car Sales vs Metro Ridership: Unlike the other two, the correlation between car sales and metro ridership was weak and slightly negative. This implies that car ownership trends may not directly influence public transportation use on a macro scale.
-4) Correlation Heatmap: A correlation matrix was generated to understand the relationships between all variables. As expected, various fare types and fuel categories showed high mutual correlation. However, metro ridership showed relatively low correlation with these financial indicators, reinforcing the complexity of ridership behavior.
-5) Time Series Visualization: I also plotted trends over time to highlight how fuel prices, metro fares, and passenger numbers evolved from 2013 to 2024. While fuel prices and fares rose steadily, ridership had a dip during the COVID-19 period and then continued to rise sharply afterward.
-
----
-
-## Hypothesis Testing
-
-To examine the statistical significance of observed relationships, hypothesis testing was conducted using Pearson correlation and linear regression. The significance level was set to 0.05.
-
----
-
-### Hypothesis 1: Fuel Price - Metro Ridership
-
-- **Pearson's r**: 0.789  
-- **p-value**: 0.0023  
-- **Regression Slope**: 11,709,814.91  
-- **Relationship Direction**: Positive  
-- **Conclusion**: Reject H01 (Significant)
-
-Interpretation: There is a strong, statistically significant positive relationship between fuel prices and metro ridership. As fuel prices increase, metro usage tends to increase as well.
-
----
-
-### Hypothesis 2: Metro Fare - Metro Ridership
-
-- **Pearson's r**: 0.788  
-- **p-value**: 0.0023  
-- **Regression Slope**: 23,288,328.18  
-- **Relationship Direction**: Positive  
-- **Conclusion**: Fail to Reject H02
-
-Interpretation: Although the correlation is statistically significant, the positive relationship is counterintuitive. It may suggest that fare increases did not deter ridership due to external factors like inflation, lack of alternatives, or population growth.
-
----
-
-### Hypothesis 3: Vehicle Sales - Metro Ridership
-
-- **Pearson's r**: -0.032  
-- **p-value**: 0.9206  
-- **Regression Slope**: -47.23  
-- **Relationship Direction**: Negative (but negligible)  
-- **Conclusion**: Fail to Reject H03
-
-Interpretation: There is no significant relationship between vehicle sales and metro ridership. Car ownership trends do not appear to have a meaningful impact on public transport usage.
-
-
-
-
+## Conclusion
+After adjusting for inflation and trend, this data does **not** support the claim that fare level is the
+main driver of ridership or that fuel prices strongly raise it. Ridership growth is mainly a time
+trend (network expansion, population growth) interrupted by COVID. Monthly data and network-length
+controls are the natural next steps.
